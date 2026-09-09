@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Union, Optional
+from typing import Optional
 from pydantic import BaseModel, Field, ValidationError, model_validator
 
 
@@ -20,12 +20,17 @@ class colors(str, Enum):
     gray = "gray"
 
 
+class Drone(BaseModel):
+    id: int
+    location: list[int]
+
+
 class Zone(BaseModel):
     name: str
     coord: tuple[int, int]
     color: colors
     status: Optional[str]
-    links: Optional[tuple[str, ...]]
+    links: Optional[tuple[str, str]]
     max_drones: Optional[int] = Field(ge=1, le=MAX_DRONES_SIZE)
 
     @model_validator(mode="after")
@@ -38,20 +43,35 @@ class Zone(BaseModel):
             self.max_drones = 1
 
 
+class Zone_queue(BaseModel):
+    drones_waiting_nbr: int
+    drones_lst: list[Drone]
+    max_link_capacity: int
+    zone_location: tuple[str, str]
+
+
 class Data(BaseModel):
     drones: int
     start: Zone
     end: Zone
-    zones: list[Zone]
+    zones: tuple[Zone, ...]
+    zone_queues: tuple[Zone_queue, ...]
 
     @model_validator(mode="after")
     def validate_rules(self):
         print("testing")
 
-
     def show_links(self):
         for zone in self.zones:
             print(f"{zone.links if zone.links is not None else ''}\n")
+
+    def show_queue(self, zone_1: Zone, zone_2: Zone):
+        for queue in self.zone_queues:
+            if queue.zone_location == (zone_1, zone_2):
+                print(f"drones waiting nbr = {queue.drones_waiting_nbr}",
+                      f"drones lst = {queue.drones_lst}",
+                      f"max link capacity = {queue.max_link_capacity}",
+                      f"zone location = {queue.zone_location}")
 
 
 def main():
