@@ -7,6 +7,7 @@ MAX_DRONES_SIZE = 400
 
 
 class colors(str, Enum):
+    none = ""
     red = "red"
     orange = "orange"
     yellow = "yellow"
@@ -30,7 +31,7 @@ class Zone(BaseModel):
     coord: tuple[int, int]
     color: colors
     status: Optional[str]
-    links: Optional[tuple[str, str]]
+    links: Optional[tuple[tuple[str, str], ...]]
     max_drones: Optional[int] = Field(ge=1, le=MAX_DRONES_SIZE)
 
     @model_validator(mode="after")
@@ -51,10 +52,11 @@ class Zone_queue(BaseModel):
 
 
 class Data(BaseModel):
+    drones: int
     start: Zone
     end: Zone
-    drones: int
     zones: tuple[Zone, ...]
+    lst_drones: tuple[Drone, ...]
     zone_queues: tuple[Zone_queue, ...]
 
     @model_validator(mode="after")
