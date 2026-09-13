@@ -2,8 +2,8 @@ from tools import Drone, Zone, Zone_queue, Data, colors
 
 
 def map_path() -> str:
-    return "/home/mmakhmae/42cursus/fly_in/arg.txt"
-    # return "C:/home/mmakhmae/42cursus/fly_in/arg.txt"
+    # return "/home/mmakhmae/42cursus/fly_in/arg.txt"
+    return "C:/Users/Red/home/42Cursus/fly_in/arg.txt"
 
 
 def exract_line(line: list[str], arg: int) -> dict[str, str | None]:
@@ -20,12 +20,12 @@ def exract_line(line: list[str], arg: int) -> dict[str, str | None]:
         elif elem.startswith("max_link_capacity") and arg == 3:
             n_line["max_link_capacity"] = elem.split("=")[1].strip()
         else:
-            print(f"skipping this data, not good: {elem}")
+            print(f"(1) skipping this data, not good: {elem}")
     return n_line
 
 
 def check_line_valid(parts: list[str]) -> tuple[str, int, int]:
-    if len(parts) < 3:
+    if len(parts) < 4:
         raise Exception("Not enough parameters")
     try:
         name = parts[1]
@@ -38,6 +38,11 @@ def check_line_valid(parts: list[str]) -> tuple[str, int, int]:
         raise Exception(f"ERR = Line is not good shape: {e}") from e
 
 
+def apply_links(lst_links: list[list[str]], target: list[Zone]) -> None:
+    for zone in target:
+        zone.links = tuple((link[0], link[1]) for link in lst_links if zone.name in link)
+
+
 def parser_txt() -> Data:
     try:
         with open(map_path(), "r", encoding="utf-8") as txt_file:
@@ -46,7 +51,9 @@ def parser_txt() -> Data:
             lst_zones: list[Zone] = []
             lst_queues: list[Zone_queue] = []
             lst_zone_name: list[str] = []
+            lst_links: list[list[str]] = []
             for line in txt_file:
+                metadata: dict[str, str | None] = {"zone": None, "color": None, "max_drones": None, "max_link_capacity": None}
                 if line.startswith("#") or line.isspace():
                     continue
                 elif line.startswith("nb_drones"):
@@ -64,7 +71,7 @@ def parser_txt() -> Data:
                                  color=colors[metadata["color"] if metadata["color"] is not None else ''],
                                  status=metadata["zone"],
                                  links=None,
-                                 max_drones=int(metadata["nb_drones"] if metadata["nb_drones"] is not None else nb_drones))
+                                 max_drones=int(metadata["max_drones"] if metadata["max_drones"] is not None else nb_drones))
                     start_done = 1
                 elif line.startswith("end_hub") and end_done == 0:
                     parts = line.split()
@@ -76,7 +83,7 @@ def parser_txt() -> Data:
                                color=colors[metadata["color"] if metadata["color"] is not None else ''],
                                status=metadata["zone"],
                                links=None,
-                               max_drones=int(metadata["nb_drones"] if metadata["nb_drones"] is not None else nb_drones))
+                               max_drones=int(metadata["max_drones"] if metadata["max_drones"] is not None else nb_drones))
                     end_done = 1
                 elif line.startswith("hub"):
                     parts = line.split()
@@ -88,7 +95,7 @@ def parser_txt() -> Data:
                                color=colors[metadata["color"] if metadata["color"] is not None else ''],
                                status=metadata["zone"],
                                links=None,
-                               max_drones=int(metadata["nb_drones"] if metadata["nb_drones"] is not None else nb_drones))
+                               max_drones=int(metadata["max_drones"] if metadata["max_drones"] is not None else nb_drones))
                     lst_zones.append(hub)
                 elif line.startswith("connection:"):
                     parts = line.split()
@@ -96,18 +103,20 @@ def parser_txt() -> Data:
                     lst_name_connection = name.split("-")
                     if len(lst_name_connection) != 2 or (lst_name_connection[0] not in lst_zone_name or lst_name_connection[1] not in lst_zone_name):
                         raise ValueError("connections name are not correct, expected: '<name1>-<name2>' got :", lst_name_connection)
-                    metadata = exract_line(parts[1:], 3)
+                    lst_links.append(lst_name_connection)
+                    if len(parts) == 3: 
+                        metadata = exract_line([parts[2]], 3)
                     queue = Zone_queue(drones_waiting_nbr=0,
                                        drones_lst=[],
-                                       max_link_capacity=int(metadata["max_link_capacity"]),
+                                       max_link_capacity=int(metadata["max_link_capacity"] if metadata["max_link_capacity"] is not None else 1),
                                        zone_location=(lst_name_connection[0], lst_name_connection[1]))
                     lst_queues.append(queue)
                 else:
-                    print(f"skipping this line, not good:\n'{line}'\n")
+                    print(f"(2) skipping this line, not good:\n'{line}'\n")
+        apply_links(lst_links, [start])
+        apply_links(lst_links, [end])
+        apply_links(lst_links, lst_zones)
         data = Data(drones=nb_drones, start=start, end=end, zones=tuple(lst_zones), lst_drones=tuple(lst_drones), zone_queues=tuple(lst_queues))
     except Exception as e:
         raise Exception(f"Cant open file txt: {e}")
     return data
-
-
-parser_txt()
