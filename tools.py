@@ -36,7 +36,10 @@ class Zone(BaseModel):
 
     @model_validator(mode="after")
     def validate_zone_rules(self):
-        if self.status is not None and self.status not in ("restricted", "normal", "blocked", "priority"):
+        if self.status is not None and self.status not in ("restricted",
+                                                           "normal",
+                                                           "blocked",
+                                                           "priority"):
             raise ValidationError("status is not correct")
         elif self.status is None:
             self.status = "normal"
