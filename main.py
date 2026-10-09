@@ -10,7 +10,7 @@ def main():
     m1.show_all_queues()
     print()
     m1.show_all_zones()
-    
+
 
 if __name__ == "__main__":
     main()

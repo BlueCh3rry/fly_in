@@ -1,4 +1,4 @@
-from tools import Drone, Zone, Zone_queue, Data, colors
+from tools import Drone, Zone, Zone_queue, Data
 
 
 def map_path() -> str:
@@ -17,7 +17,7 @@ def exract_line(line: list[str], arg: int) -> dict[str, str | None]:
         if elem.startswith("zone") and arg == 2:
             n_line["zone"] = elem.split("=")[1].strip()
         elif elem.startswith("color") and arg != 3:
-            n_line["color"] = elem.split("=")[1].strip()
+            n_line["color"] = elem.split("=")[1].strip().upper()
         elif elem.startswith("max_drones") and arg == 2:
             n_line["max_drones"] = elem.split("=")[1].strip()
         elif elem.startswith("max_link_capacity") and arg == 3:
@@ -50,8 +50,11 @@ def apply_links(lst_links: list[list[str]], target: list[Zone]) -> None:
 def parser_txt() -> Data:
     try:
         with open(map_path(), "r", encoding="utf-8") as txt_file:
+            start = None
+            end = None
             start_done = 0
             end_done = 0
+            nb_drones_done = 0
             lst_zones: list[Zone] = []
             lst_queues: list[Zone_queue] = []
             lst_zone_name: list[str] = []
@@ -63,11 +66,15 @@ def parser_txt() -> Data:
                                                    "max_link_capacity": None}
                 if line.startswith("#") or line.isspace():
                     continue
-                if line.startswith("nb_drones"):
-                    nb_drones = int(line.split(":")[1].strip())
+                if line.startswith("nb_drones") and nb_drones_done == 0:
+                    drones_size = int(line.split(":")[1].strip())
                     lst_drones = []
-                    for i in range(nb_drones):
-                        lst_drones.append(Drone(id=i, location=[0, 0]))
+                    for i in range(drones_size):
+                        lst_drones.append(Drone(name="D"+str(i), id=i,
+                                                location=[0, 0]))
+                    nb_drones_done = 1
+                elif line.startswith("nb_drones") and nb_drones_done == 1:
+                    raise ValueError("Error, got 2 lines of nb_drones")
                 if line.startswith("start_hub") and start_done == 0:
                     parts = line.split()
                     name, x, y = check_line_valid(parts)
@@ -75,15 +82,16 @@ def parser_txt() -> Data:
                     metadata = exract_line(parts[4:], 1)
                     start = Zone(name=name,
                                  coord=(x, y),
-                                 color=colors[metadata["color"]
-                                              if metadata["color"] is not None
-                                              else ''],
+                                 color=metadata["color"] if metadata["color"]
+                                 is not None else "WHITE",
                                  status=metadata["zone"],
                                  links=None,
                                  max_drones=int(metadata["max_drones"]
                                                 if metadata["max_drones"]
-                                                is not None else nb_drones))
+                                                is not None else drones_size))
                     start_done = 1
+                elif line.startswith("start_hub") and start_done == 1:
+                    raise ValueError("Error, got 2 lines of start_hub")
                 if line.startswith("end_hub") and end_done == 0:
                     parts = line.split()
                     name, x, y = check_line_valid(parts)
@@ -91,15 +99,16 @@ def parser_txt() -> Data:
                     metadata = exract_line(parts[4:], 1)
                     end = Zone(name=name,
                                coord=(x, y),
-                               color=colors[metadata["color"]
-                                            if metadata["color"] is not None
-                                            else ''],
+                               color=metadata["color"] if metadata["color"]
+                               is not None else "WHITE",
                                status=metadata["zone"],
                                links=None,
                                max_drones=int(metadata["max_drones"]
                                               if metadata["max_drones"]
-                                              is not None else nb_drones))
+                                              is not None else drones_size))
                     end_done = 1
+                elif line.startswith("end_hub") and end_done == 1:
+                    raise ValueError("Error, got 2 lines of end_hub")
                 if line.startswith("hub"):
                     parts = line.split()
                     name, x, y = check_line_valid(parts)
@@ -107,14 +116,13 @@ def parser_txt() -> Data:
                     metadata = exract_line(parts[4:], 2)
                     hub = Zone(name=name,
                                coord=(x, y),
-                               color=colors[metadata["color"]
-                                            if metadata["color"] is not None
-                                            else ''],
+                               color=metadata["color"] if metadata["color"]
+                               is not None else "WHITE",
                                status=metadata["zone"],
                                links=None,
                                max_drones=int(metadata["max_drones"]
                                               if metadata["max_drones"]
-                                              is not None else nb_drones))
+                                              is not None else drones_size))
                     lst_zones.append(hub)
                 if line.startswith("connection:"):
                     parts = line.split()
@@ -144,12 +152,21 @@ def parser_txt() -> Data:
                         line.startswith("hub:") or
                         line.startswith("connection:")):
                     raise ValueError(f"Error, this line not good: '{line}'\n")
-        apply_links(lst_links, [start])
-        apply_links(lst_links, [end])
-        apply_links(lst_links, lst_zones)
-        data = Data(drones=nb_drones, start=start, end=end,
+        if start is not None:
+            apply_links(lst_links, [start])
+        else:
+            raise ValueError("No start_hub in the map txt")
+        if end is not None:
+            apply_links(lst_links, [end])
+        else:
+            raise ValueError("No end_hub in the map txt")
+        if lst_zones is not None:
+            apply_links(lst_links, lst_zones)
+        else:
+            raise ValueError("No lst_zones collected in the map txt")
+        data = Data(drones=drones_size, start=start, end=end,
                     zones=tuple(lst_zones), lst_drones=tuple(lst_drones),
                     zone_queues=tuple(lst_queues))
-    except Exception as e:
-        raise Exception(f"Got error: {e}")
+    except IOError as e:
+        raise IOError("Got error: ", e)
     return data
