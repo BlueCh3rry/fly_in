@@ -1,6 +1,6 @@
 import sys
-from graph import Connection, Graph, Zone
 from algo import PathNotFoundError, Pathfinder
+from colors import colorize
 from parser import parse_map
 
 
@@ -15,10 +15,21 @@ def main() -> None:
     except (PathNotFoundError, ValueError, OSError) as e:
         print(f"Error: {e}")
         sys.exit(1)
-    print("\n".join(moves))
     print(f"Total turns: {len(moves)}")
+    x: int = 1
+    color: str = ""
     for line in Pathfinder.format_output(moves):
-        print(line)
+        n_line = line.split()
+        print(f"Turn {x} : ", end="")
+        for connection in n_line:
+            n_connection = connection.split("-")
+            drone = n_connection[0]
+            zone_name = n_connection[1]
+            color = graph.zones[zone_name].color
+            print(f"{drone}-{colorize(zone_name, color)} ", end="")
+        print()
+        x += 1
+        # print(line)
 
 
 if __name__ == "__main__":

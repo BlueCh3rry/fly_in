@@ -141,9 +141,6 @@ class Pathfinder:
         self.drone_ids = [f"D{i}" for i in range(1, nb_drones + 1)]
         self.heuristics = self._compute_heuristics()
 
-    # ------------------------------------------------------------------
-    # Zone helpers (integer turns, independent of Zone.get_cost floats)
-    # ------------------------------------------------------------------
     def _turns(self, name: str) -> int | None:
         """Turns needed to enter a zone, None if it is blocked."""
         zone = self.graph.get_zone(name)
@@ -158,9 +155,6 @@ class Pathfinder:
         assert zone is not None
         return zone.zone_type == "priority"
 
-    # ------------------------------------------------------------------
-    # Heuristic
-    # ------------------------------------------------------------------
     def _compute_heuristics(self) -> dict[str, int]:
         """Minimum turns from every zone to the end hub.
 
@@ -192,9 +186,6 @@ class Pathfinder:
                     heapq.heappush(heap, (nd, neighbor))
         return dist
 
-    # ------------------------------------------------------------------
-    # Scheduling
-    # ------------------------------------------------------------------
     def schedule_moves(
         self, max_time: int | None = None
     ) -> dict[int, dict[str, str]]:

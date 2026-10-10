@@ -1,9 +1,22 @@
 .PHONY: install run debug clean lint lint-strict
 
-MAP := arg.txt
+E1 := easy/01_linear_path.txt
+E2 := easy/02_simple_fork.txt
+E3 := easy/03_basic_capacity.txt
+
+M1 := medium/01_dead_end_trap.txt
+M2 := medium/02_circular_loop.txt
+M3 := medium/03_priority_puzzle.txt
+
+H1 := hard/01_maze_nightmare.txt
+H2 := hard/02_capacity_hell.txt
+H3 := hard/03_ultimate_challenge.txt
+
+C1 := challenger/01_the_impossible_dream.txt
+
 FOLDER1 := /home/mmakhmae/42cursus/fly_in/maps
-FOLDER2 := C:/Users/Red/home/42Cursus/fly_in/arg.txt
-ARG := $(FOLDER1)/$(MAP)
+FOLDER2 := C:/Users/Red/home/42Cursus/fly_in/maps
+ARG := $(FOLDER1)/$(M2)
 
 install:
 	uv sync --python 3.11

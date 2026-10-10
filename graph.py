@@ -48,7 +48,7 @@ class Zone:
         x: int,
         y: int,
         zone_type: str | ZoneType = ZoneType.NORMAL,
-        color: str | None = None,
+        color: str = "white",
         max_drones: int = 1,
         *,
         priority_bonus: float = 0.0,
@@ -67,7 +67,7 @@ class Zone:
         self.x: int = x
         self.y: int = y
         self.zone_type: ZoneType = zone_type
-        self.color: str | None = color
+        self.color: str = color
         self.max_drones: int = max_drones
         self.priority_bonus: float = priority_bonus
 

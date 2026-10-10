@@ -21,6 +21,15 @@ COLORS: dict[str, str] = {
     "lightyellow": "\033[93m", "lightblue": "\033[94m",
     "lightmagenta": "\033[95m", "lightcyan": "\033[96m",
     "lightwhite": "\033[97m",
+    # dark variants
+    "darkred": _c256(52), "darkgreen": _c256(22), "darkblue": _c256(17),
+    "darkyellow": _c256(136), "darkmagenta": _c256(90),
+    "darkcyan": _c256(23), "darkgray": _c256(238),
+    "darkorange": _c256(166), "darkpurple": _c256(53),
+    "darkpink": _c256(132), "darklime": _c256(70),
+    "darkgold": _c256(178), "darkturquoise": _c256(37),
+    "darkviolet": _c256(91), "darkcrimson": _c256(125),
+    "darksalmon": _c256(173), "darkcoral": _c256(167),
     # extra
     "orange": _c256(208), "purple": _c256(93), "pink": _c256(213),
     "brown": _c256(94), "gold": _c256(220), "lime": _c256(118),
@@ -39,4 +48,6 @@ def get_color(name: str) -> str:
 
 def colorize(text: str, color: str) -> str:
     """Wrap text in the given color."""
+    if color == "":
+        color = "white"
     return f"{get_color(color)}{text}{RESET}"
