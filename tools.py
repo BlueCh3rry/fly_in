@@ -1,8 +1,46 @@
 from colorama import Fore, Style, init
 from typing import Optional
 from pydantic import BaseModel, model_validator
+from typing import Optional
 
 init(autoreset=True)
+
+RESET = "\033[0m"
+
+
+def _c256(n: int) -> str:
+    """ANSI 256-color foreground code."""
+    return f"\033[38;5;{n}m"
+
+
+COLORS: dict[str, str] = {
+    "black": "\033[30m", "red": "\033[31m", "green": "\033[32m",
+    "yellow": "\033[33m", "blue": "\033[34m", "magenta": "\033[35m",
+    "cyan": "\033[36m", "white": "\033[37m",
+    # bright variants
+    "gray": "\033[90m", "lightred": "\033[91m", "lightgreen": "\033[92m",
+    "lightyellow": "\033[93m", "lightblue": "\033[94m",
+    "lightmagenta": "\033[95m", "lightcyan": "\033[96m",
+    "lightwhite": "\033[97m",
+    # extra
+    "orange": _c256(208), "purple": _c256(93), "pink": _c256(213),
+    "brown": _c256(94), "gold": _c256(220), "lime": _c256(118),
+    "teal": _c256(30), "maroon": _c256(88), "navy": _c256(18),
+    "olive": _c256(100), "violet": _c256(129), "crimson": _c256(161),
+    "turquoise": _c256(45), "salmon": _c256(209), "beige": _c256(223),
+    "silver": _c256(250), "coral": _c256(203), "indigo": _c256(54),
+    "rainbow": _c256(196),
+}
+
+
+def get_color(name: str) -> str:
+    """Return the ANSI code for a color name (case-insensitive)."""
+    return COLORS[name.lower()]
+
+
+def colorize(text: str, color: str) -> str:
+    """Wrap text in the given color."""
+    return f"{get_color(color)}{text}{RESET}"
 
 
 class Drone(BaseModel):
@@ -28,7 +66,7 @@ class Zone(BaseModel):
             raise ValueError("status is not correct for Zone(BaseModel)")
         elif self.status is None:
             self.status = "normal"
-        if not hasattr(Fore, self.color):
+        if self.color.lower() not in COLORS:
             raise ValueError(
                 f"Color is not correct for Zone(BaseModel), got: {self.color}")
         if self.max_drones <= 0:
@@ -76,7 +114,7 @@ class Data(BaseModel):
         for zone in self.zones:
             if zone.name == zone_1:
                 print("\tname =",
-                      getattr(Fore, zone.color) + zone.name + Style.RESET_ALL,
+                      colorize(zone.name, zone.color),
                       f"\tcoord = {zone.coord}",
                       f"\tcolor = {zone.color}",
                       f"\tstatus = {zone.status}",
@@ -95,10 +133,10 @@ class Data(BaseModel):
         print("All zones info, 'show_all_zones()':")
         for zone in self.zones:
             print("\tname =",
-                  getattr(Fore, zone.color) + zone.name + Style.RESET_ALL,
+                  colorize(zone.name, zone.color),
                   f"\tcoord = {zone.coord}",
                   "\tcolor =",
-                  getattr(Fore, zone.color) + zone.color + Style.RESET_ALL,
+                  colorize(zone.color, zone.color),
                   f"\tstatus = {zone.status}",
                   f"\tlinks = {zone.links}",
                   f"\tmax_drones = {zone.max_drones}")

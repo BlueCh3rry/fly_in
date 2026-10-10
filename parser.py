@@ -17,7 +17,7 @@ def exract_line(line: list[str], arg: int) -> dict[str, str | None]:
         if elem.startswith("zone") and arg == 2:
             n_line["zone"] = elem.split("=")[1].strip()
         elif elem.startswith("color") and arg != 3:
-            n_line["color"] = elem.split("=")[1].strip().upper()
+            n_line["color"] = elem.split("=")[1].strip().lower()
         elif elem.startswith("max_drones") and arg == 2:
             n_line["max_drones"] = elem.split("=")[1].strip()
         elif elem.startswith("max_link_capacity") and arg == 3:
@@ -83,7 +83,7 @@ def parser_txt() -> Data:
                     start = Zone(name=name,
                                  coord=(x, y),
                                  color=metadata["color"] if metadata["color"]
-                                 is not None else "WHITE",
+                                 is not None else "white",
                                  status=metadata["zone"],
                                  links=None,
                                  max_drones=int(metadata["max_drones"]
@@ -100,7 +100,7 @@ def parser_txt() -> Data:
                     end = Zone(name=name,
                                coord=(x, y),
                                color=metadata["color"] if metadata["color"]
-                               is not None else "WHITE",
+                               is not None else "white",
                                status=metadata["zone"],
                                links=None,
                                max_drones=int(metadata["max_drones"]
@@ -117,7 +117,7 @@ def parser_txt() -> Data:
                     hub = Zone(name=name,
                                coord=(x, y),
                                color=metadata["color"] if metadata["color"]
-                               is not None else "WHITE",
+                               is not None else "white",
                                status=metadata["zone"],
                                links=None,
                                max_drones=int(metadata["max_drones"]
