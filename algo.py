@@ -98,6 +98,16 @@ class ReservationTable:
                     self.link_use[(key, t)] += 1
             self.zone_use[(to_zone, to_time)] += 1
 
+    def print_link_usage(self) -> None: # added here
+        print("\n=== CONNECTION USAGE ===")
+        for (connection, turn), count in sorted(
+            self.link_use.items(),
+            key=lambda item: (item[0][1], item[0][0]),
+        ):
+            print(
+                f"Turn {turn} | {connection[0]}-{connection[1]} "
+                f"| Drones: {count}"
+            )
 
 class Node:
     """Represents a node in the A* search tree."""
@@ -222,6 +232,7 @@ class Pathfinder:
                     f"No schedule found for {d_id} within {max_time} turns")
             table.reserve_path(path)
             self._add_moves(moves_by_turn, d_id, path)
+        table.print_link_usage() # added here
         return dict(moves_by_turn)
 
     def _successors(
