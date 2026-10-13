@@ -15,99 +15,11 @@ from collections import defaultdict
 from graph import Graph
 
 State = tuple[str, int]
-LinkKey = tuple[tuple[str, str], int]
 
 
 class PathNotFoundError(Exception):
     """Raised when the map has no valid route from start to end."""
 
-
-class ReservationTable:
-    """Tracks zone and connection usage per turn."""
-
-    def __init__(self, graph: Graph) -> None:
-        """Initialize an empty reservation table.
-
-        Args:
-            graph: The graph providing zone and link capacities.
-        """
-        assert graph.start_hub is not None
-        assert graph.end_hub is not None
-        self.graph = graph
-        self.zone_use: dict[State, int] = defaultdict(int)
-        self.link_use: dict[LinkKey, int] = defaultdict(int)
-        # Start and end ignore max_drones (see subject, parser rules).
-        self._unlimited: set[str] = {
-            graph.start_hub.name,
-            graph.end_hub.name,
-        }
-
-    @staticmethod
-    def _connection_key(zone1: str, zone2: str) -> tuple[str, str]:
-        """Return a normalized key so a-b and b-a share one counter."""
-        z1, z2 = sorted((zone1, zone2))
-        return (z1, z2)
-
-    @staticmethod
-    def link_turns(depart: int, arrive: int) -> range:
-        """Turns during which a move occupies its connection.
-
-        A normal move uses the link on turn depart+1. A restricted move
-        also uses it only on depart+1: the link is freed on the arrival
-        turn, as the subject requires.
-        """
-        return range(depart + 1, max(depart + 2, arrive))
-
-    def is_safe(self, zone_name: str, time: int) -> bool:
-        """Tell whether a zone can take one more drone at ``time``."""
-        if zone_name in self._unlimited:
-            return True
-        zone = self.graph.get_zone(zone_name)
-        assert zone is not None
-        return self.zone_use.get((zone_name, time), 0) < zone.max_drones
-
-    def is_connection_safe(self, zone1: str, zone2: str, time: int) -> bool:
-        """Tell whether a connection can take one more drone at ``time``."""
-        conn = self.graph.get_connection(zone1, zone2)
-        assert conn is not None
-        key = (self._connection_key(zone1, zone2), time)
-        return self.link_use.get(key, 0) < conn.max_link_capacity
-
-    def is_move_safe(
-        self, zone1: str, zone2: str, depart: int, arrive: int
-    ) -> bool:
-        """Check link capacity during the crossing and zone at arrival."""
-        links_ok = all(
-            self.is_connection_safe(zone1, zone2, t)
-            for t in self.link_turns(depart, arrive)
-        )
-        return links_ok and self.is_safe(zone2, arrive)
-
-    def reserve_path(self, path: list[State]) -> None:
-        """Reserve every zone-time and connection-time used by a path.
-
-        Args:
-            path: List of (zone_name, time) tuples, waits included.
-        """
-        for (from_zone, from_time), (to_zone, to_time) in zip(
-            path, path[1:]
-        ):
-            if from_zone != to_zone:
-                key = self._connection_key(from_zone, to_zone)
-                for t in self.link_turns(from_time, to_time):
-                    self.link_use[(key, t)] += 1
-            self.zone_use[(to_zone, to_time)] += 1
-
-    def print_link_usage(self) -> None: # added here
-        print("\n=== CONNECTION USAGE ===")
-        for (connection, turn), count in sorted(
-            self.link_use.items(),
-            key=lambda item: (item[0][1], item[0][0]),
-        ):
-            print(
-                f"Turn {turn} | {connection[0]}-{connection[1]} "
-                f"| Drones: {count}"
-            )
 
 class Node:
     """Represents a node in the A* search tree."""
@@ -149,9 +61,60 @@ class Pathfinder:
         """
         self.graph = graph
         self.drone_ids = [f"D{i}" for i in range(1, nb_drones + 1)]
-        self.heuristics = self._compute_heuristics()
+        assert graph.start_hub is not None and graph.end_hub is not None
+        graph.start_hub.unlimited = True
+        graph.end_hub.unlimited = True
+        self.heuristics = self.compute_heuristics()
 
-    def _turns(self, name: str) -> int | None:
+    @staticmethod
+    def link_turns(depart: int, arrive: int) -> range:
+        """Turns a move occupies its link (depart+1 only)."""
+        return range(depart + 1, max(depart + 2, arrive))
+
+    def is_move_safe(
+        self, src: str, dst: str, depart: int, arrive: int
+    ) -> bool:
+        """Link free during crossing and destination free on arrival."""
+        conn = self.graph.get_connection(src, dst)
+        zone = self.graph.get_zone(dst)
+        assert conn is not None and zone is not None
+        if zone.is_full(arrive):
+            return False
+        return not any(
+            conn.is_full(t) for t in self.link_turns(depart, arrive)
+        )
+
+    def reserve_path(self, path: list[State]) -> None:
+        """Mark every zone-time and link-time used by a path as occupied."""
+        for (a, t0), (b, t1) in zip(path, path[1:]):
+            if a != b:
+                conn = self.graph.get_connection(a, b)
+                assert conn is not None
+                for t in self.link_turns(t0, t1):
+                    conn.occupy(t)
+            zone = self.graph.get_zone(b)
+            assert zone is not None
+            zone.occupy(t1)
+
+    def print_usage_by_turn(self) -> None:
+        """Shows current occupied size in zones and connections"""
+        zones = self.graph.zones.values()
+        conns = {id(c): c for c in self.graph.connections.values()}.values()
+        turns = sorted(
+            {t for z in zones for t in z.occupied}
+            | {t for c in conns for t in c.occupied}
+        )
+        for turn in turns:
+            print(f"\nTurn {turn}:")
+            for zone in sorted(zones, key=lambda z: z.name):
+                cont = zone.occupied.get(turn, 0)
+                if cont:
+                    print(f"zone {zone.name}: {cont}/{zone.max_drones} drones")
+            for conn in sorted(conns, key=lambda c: (c.zone1, c.zone2)):
+                if conn.occupied.get(turn, 0):
+                    print(f"connection {conn.usage(turn)}")
+
+    def turns(self, name: str) -> int | None:
         """Turns needed to enter a zone, None if it is blocked."""
         zone = self.graph.get_zone(name)
         assert zone is not None
@@ -159,13 +122,13 @@ class Pathfinder:
             return None
         return 2 if zone.zone_type == "restricted" else 1
 
-    def _is_priority(self, name: str) -> bool:
+    def is_priority(self, name: str) -> bool:
         """Tell whether a zone is a priority zone."""
         zone = self.graph.get_zone(name)
         assert zone is not None
         return zone.zone_type == "priority"
 
-    def _compute_heuristics(self) -> dict[str, int]:
+    def compute_heuristics(self) -> dict[str, int]:
         """Minimum turns from every zone to the end hub.
 
         Reverse Dijkstra: entering a zone costs its own turn cost, so
@@ -184,11 +147,11 @@ class Pathfinder:
             d, current = heapq.heappop(heap)
             if d > dist[current]:
                 continue
-            step = self._turns(current)  # cost paid to enter `current`
+            step = self.turns(current)  # cost paid to enter `current`
             if step is None:
                 continue
             for neighbor in self.graph.get_neighbors(current):
-                if self._turns(neighbor) is None:
+                if self.turns(neighbor) is None:
                     continue
                 nd = d + step
                 if nd < dist.get(neighbor, nd + 1):
@@ -222,49 +185,46 @@ class Pathfinder:
             # Worst case: drones cross strictly one after another.
             max_time = self.heuristics[start] * (len(self.drone_ids) + 1) + 2
 
-        table = ReservationTable(self.graph)
+        self.graph.reset_occupancy()
         moves_by_turn: dict[int, dict[str, str]] = defaultdict(dict)
 
         for d_id in self.drone_ids:
-            path = self._astar(table, max_time)
+            path = self.astar(max_time)
             if path is None:
                 raise PathNotFoundError(
                     f"No schedule found for {d_id} within {max_time} turns")
-            table.reserve_path(path)
-            self._add_moves(moves_by_turn, d_id, path)
-        table.print_link_usage() # added here
+            self.reserve_path(path)
+            self.add_moves(moves_by_turn, d_id, path)
+            # print(f"{d_id}-{path}")
+        # self.print_usage_by_turn()
         return dict(moves_by_turn)
 
-    def _successors(
-        self, current: Node, table: ReservationTable
-    ) -> list[tuple[str, int, int]]:
+    def successors(self, current: Node) -> list[tuple[str, int, int]]:
         """Legal moves from a node: (zone, arrival time, penalty added)."""
         result: list[tuple[str, int, int]] = []
+        here = self.graph.get_zone(current.name)
+        assert here is not None
 
-        if table.is_safe(current.name, current.time + 1):
+        if not here.is_full(current.time + 1):
             result.append((current.name, current.time + 1, 0))
 
         for neighbor in self.graph.get_neighbors(current.name):
-            turns = self._turns(neighbor)
+            turns = self.turns(neighbor)
             if turns is None:
                 continue
             arrive = current.time + turns
-            if table.is_move_safe(
-                    current.name, neighbor, current.time, arrive):
-                extra = 0 if self._is_priority(neighbor) else 1
+            if self.is_move_safe(current.name, neighbor, current.time, arrive):
+                extra = 0 if self.is_priority(neighbor) else 1
                 result.append((neighbor, arrive, extra))
         return result
 
-    def _astar(
-        self, table: ReservationTable, max_depth: int
-    ) -> list[State] | None:
+    def astar(self, max_depth: int) -> list[State] | None:
         """A* from start to end over (zone, time) states.
 
         States are ordered by (time + heuristic, non-priority count), so
         arrival time always wins and priority zones only break ties.
 
         Args:
-            table: Reservation table for conflict checking.
             max_depth: Maximum turn (time horizon).
 
         Returns:
@@ -288,13 +248,12 @@ class Pathfinder:
             if key in closed:
                 continue
             closed.add(key)
-
             if current.name == end:
-                return self._rebuild(current)
+                return self.rebuild(current)
             if current.time >= max_depth:
                 continue
 
-            for name, arrive, extra in self._successors(current, table):
+            for name, arrive, extra in self.successors(current):
                 h = self.heuristics.get(name)
                 if h is None:
                     continue
@@ -308,7 +267,7 @@ class Pathfinder:
         return None
 
     @staticmethod
-    def _rebuild(node: Node) -> list[State]:
+    def rebuild(node: Node) -> list[State]:
         """Follow parents back to the root and return the path."""
         path: list[State] = []
         current: Node | None = node
@@ -319,7 +278,7 @@ class Pathfinder:
         return path
 
     @staticmethod
-    def _add_moves(
+    def add_moves(
         moves_by_turn: dict[int, dict[str, str]],
         d_id: str,
         path: list[State],

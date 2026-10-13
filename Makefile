@@ -16,7 +16,7 @@ C1 := challenger/01_the_impossible_dream.txt
 
 FOLDER1 := /home/mmakhmae/42cursus/fly_in/maps
 FOLDER2 := C:/Users/Red/home/42Cursus/fly_in/maps
-ARG := $(FOLDER1)/$(M2)
+ARG := $(FOLDER1)/$(H1)
 
 install:
 	uv sync --python 3.11
@@ -49,4 +49,4 @@ lint:
 
 lint-strict:
 	uv run flake8 *.py
-	uv run mypy *.py --exclude '(^\.venv/)'
+	uv run mypy *.py --strict

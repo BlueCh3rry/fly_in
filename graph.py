@@ -3,8 +3,8 @@
 import enum
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
-
 from colors import COLORS
+from collections import defaultdict
 
 
 class ZoneType(str, enum.Enum):
@@ -39,9 +39,6 @@ class Drone:
 class Zone:
     """Represents a zone (vertex) in the network graph."""
 
-    __slots__ = ("name", "x", "y", "zone_type", "color",
-                 "max_drones", "priority_bonus")
-
     def __init__(
         self,
         name: str,
@@ -70,14 +67,22 @@ class Zone:
         self.color: str = color
         self.max_drones: int = max_drones
         self.priority_bonus: float = priority_bonus
+        self.occupied: dict[int, int] = defaultdict(int)
+        self.unlimited: bool = False
 
-    def get_cost(self) -> float:
-        """Return the movement cost for entering this zone."""
-        if self.zone_type is ZoneType.BLOCKED:
-            return 100000.0
+    def is_full(self, time: int) -> bool:
+        """Tell whether the zone cannot take another drone at ``time``."""
+        if self.unlimited:
+            return False
+        return self.occupied.get(time, 0) >= self.max_drones
 
-        base_cost = 2.0 if self.zone_type is ZoneType.RESTRICTED else 1.0
-        return base_cost - self.priority_bonus
+    def occupy(self, time: int) -> None:
+        """Register one more drone in this zone at ``time``."""
+        self.occupied[time] += 1
+
+    def reset(self) -> None:
+        """Clear all occupancy."""
+        self.occupied.clear()
 
     def is_blocked(self) -> bool:
         """Return `True` if this zone is blocked."""
@@ -86,8 +91,6 @@ class Zone:
 
 class Connection:
     """Undirected connection (edge) between two zones."""
-
-    __slots__ = ("zone1", "zone2", "max_link_capacity")
 
     def __init__(
         self, zone1: str, zone2: str, max_link_capacity: int = 1
@@ -98,10 +101,28 @@ class Connection:
         self.zone1: str = zone1
         self.zone2: str = zone2
         self.max_link_capacity: int = max_link_capacity
+        self.occupied: dict[int, int] = defaultdict(int)
+
+    def is_full(self, time: int) -> bool:
+        """Tell whether the link cannot take another drone at ``time``."""
+        return self.occupied.get(time, 0) >= self.max_link_capacity
+
+    def occupy(self, time: int) -> None:
+        """Register one more drone on this link at ``time``."""
+        self.occupied[time] += 1
+
+    def reset(self) -> None:
+        """Clear all occupancy."""
+        self.occupied.clear()
 
     def get_zones(self) -> Tuple[str, str]:
         """Return the pair of zone names this connection links."""
         return (self.zone1, self.zone2)
+
+    def usage(self, time: int) -> str:
+        """Return 'z1-z2 occupied/max' for a given turn."""
+        return (f"{self.zone1}-{self.zone2} "
+                f"{self.occupied.get(time, 0)}/{self.max_link_capacity}")
 
 
 class Graph:
@@ -152,3 +173,10 @@ class Graph:
     def get_all_zones(self) -> List[Zone]:
         """Return all zones in the graph."""
         return list(self.zones.values())
+
+    def reset_occupancy(self) -> None:
+        """Clear occupancy on every zone and connection."""
+        for zone in self.zones.values():
+            zone.reset()
+        for conn in self.connections.values():
+            conn.reset()
