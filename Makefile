@@ -15,7 +15,6 @@ H3 := hard/03_ultimate_challenge.txt
 C1 := challenger/01_the_impossible_dream.txt
 
 FOLDER1 := /home/mmakhmae/42cursus/fly_in/maps
-FOLDER2 := C:/Users/Red/home/42Cursus/fly_in/maps
 ARG := $(FOLDER1)/$(H1)
 
 install:

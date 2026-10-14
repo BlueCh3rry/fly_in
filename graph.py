@@ -15,6 +15,7 @@ class ZoneType(str, enum.Enum):
     RESTRICTED = "restricted"
     BLOCKED = "blocked"
 
+
 @dataclass
 class Drone:
     """Represents a drone in the simulation."""
