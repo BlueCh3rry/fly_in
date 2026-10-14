@@ -1,0 +1,39 @@
+Blocking issues
+Bug in main.py with restricted zones. An in-flight token like D1-roof1-roof2 gets split on -, so only roof1 is printed and the destination is lost. The new main.py fixes this. It also fixes these:
+It is now a Simulation class (the subject requires a fully OOP project).
+The trailing space on each line is gone.
+Total turns goes to stderr, because it isn’t a valid output line.
+argparse accepts --capacity-info, so the live-coding task is covered. Simulation.usage_lines prints the zone and connection usage after each turn.
+flake8 error in graph.py. There is only one blank line before @dataclass class Drone, so you get E302. Add a second blank line.
+Unknown colors crash the parser. The subject says there is no fixed list of colors. In Zone.__init__, delete the if color is not None and ...: raise check and the from colors import COLORS import. Then make Palette.colorize fall back to white:
+python
+        name = (color or cls.DEFAULT).lower()
+        code = cls.TABLE.get(name, cls.TABLE[cls.DEFAULT])
+max_drones on start/end must be ignored. Currently [max_drones=0] on a start hub raises an error. In parse_map, right after met = self.parse_meta(...) in the hub branch:
+python
+                        if key != "hub":
+                            met.pop("max_drones", None)  # ignored
+Dashes in zone names are accepted. The subject forbids them. In parse_hub, after name, x, y = parts:
+python
+        if "-" in name:
+            raise ValueError(f"zone name cannot contain '-': '{name}'")
+Missing docstring. parse_line has none, and the Parser class docstring describes the wrong thing.
+Smaller issues
+Connection order. The subject says connections must link only previously defined zones, but you add them after reading the whole file. Add each one inline instead. Delete links and the loop at the end:
+python
+                        graph.add_connection(Connection(
+                            names[0], names[1],
+                            int(met.get("max_link_capacity", 1))))
+Coordinate check. The subject only requires unique names, so rejecting two zones on the same coordinates could reject a valid evaluation map. I’d remove that check.
+_c256 in colors.py. It is a staticmethod used inside the class body. That works on Python 3.10+, but it is fragile, so I’d move it back to a module-level function.
+Makefile. Add .PHONY: install run debug clean lint lint-strict, and check the recipe lines use tabs, not spaces. For lint-strict, you likely need types-colorama in your dev dependencies.
+.flake8. Add one with exclude = .venv,__pycache__,.mypy_cache, so a plain flake8 . doesn’t scan your virtualenv.
+Dead code. Drone, priority_bonus, get_zones, Palette.names and Palette.has are unused. print_usage_by_turn in algo.py is also unused now that usage_lines exists.
+Check yourself
+Restricted zones. On a map with one, confirm you get D1-roof1-roof2 while the drone is in flight, then D1-roof2 on arrival.
+Benchmarks. Run all 10 maps against the subject’s optimums: 4/4/4, 8/10/6, 13/16/26, and 43 for the challenger. The 25% thresholds are 5/5/5, 10/12/7, 16/20/32, and 53. The scale you pasted shows looser targets (≤6/8/6, ≤12/15/12, ≤30/35/45) than the subject, so aim for the subject’s numbers.
+Colors when piped. colorama should strip colors when the output is piped. Verify with python main.py map.txt | cat -A.
+Lint. Run make lint.
+Repo files. Check that pyproject.toml lists colorama, flake8 and mypy, and that .gitignore exists. Check that the README has the italic first line (This project has been created as part of the 42 curriculum by <login>.), Description, Instructions, Resources (including how you used AI), algorithm, visuals, and example input and output.
+Complexity. Be ready to explain it for the review. Each drone runs one A* over (zone, time) states, about O(V·T·deg·log) per drone. For N drones that is roughly O(N²·V·log) when the start is a bottleneck, because T grows with N. Memory is the reservation dictionaries, about O(N × path length).
+Optimality. Planning drones one after another is a heuristic and isn’t guaranteed optimal. The challenger map (43 turns) is the one most likely to miss.
