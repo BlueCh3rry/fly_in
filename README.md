@@ -66,19 +66,6 @@ These distances provide A* with an estimate of the remaining travel time, helpin
 
 The heuristic ignores dynamic reservations, making it an optimistic estimate that guides the search efficiently.
 
-
-### Reservation Table
-
-A reservation table tracks resource usage at each turn:
-
-- **Zone capacity:** Prevents drones from exceeding a zone's `max_drones` limit.
-- **Connection capacity:** Prevents drones from exceeding a connection's `max_link_capacity`.
-- **Waiting:** Allows drones to wait until a zone or connection becomes available.
-
-The starting and destination hubs have unlimited capacity.
-
-Drones are planned sequentially. Once a route is found, its reservations are recorded before planning the next drone.
-
 ### Priority-Based Routing
 
 When candidate states have the same estimated arrival cost, the algorithm prefers routes with fewer non-priority zones.

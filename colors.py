@@ -1,15 +1,8 @@
 """ANSI color helpers."""
 
-from __future__ import annotations
-
 from colorama import init
 
 init(autoreset=True)
-
-
-def _c256(n: int) -> str:
-    """ANSI 256-color foreground code."""
-    return f"\033[38;5;{n}m"
 
 
 class Palette:
@@ -17,6 +10,11 @@ class Palette:
 
     RESET: str = "\033[0m"
     DEFAULT: str = "white"
+
+    @staticmethod
+    def _c256(n: int) -> str:
+        """ANSI 256-color foreground code."""
+        return f"\033[38;5;{n}m"
 
     TABLE: dict[str, str] = {
         "black": "\033[30m", "red": "\033[31m", "green": "\033[32m",

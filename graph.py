@@ -15,23 +15,12 @@ class ZoneType(str, enum.Enum):
     RESTRICTED = "restricted"
     BLOCKED = "blocked"
 
-
-class DroneState(str, enum.Enum):
-    """Enum representing the current state of a drone."""
-
-    READY = "ready"
-    MOVING = "moving"
-    IN_TRANSIT = "in_transit"
-    DELIVERED = "delivered"
-
-
 @dataclass
 class Drone:
     """Represents a drone in the simulation."""
 
     drone_id: str
     current_zone: str
-    state: DroneState = DroneState.READY
     target_zone: str | None = None
     turns_waited: int = 0
 
